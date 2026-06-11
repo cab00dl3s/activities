@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lavaredo 20K — Race Readiness</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg: #0b0f0e;
+  --surface: #111715;
+  --surface2: #172019;
+  --border: #1e2b25;
+  --border2: #243328;
+  --muted: #4a6358;
+  --text: #dde8e2;
+  --text-dim: #7a9e8e;
+  --accent: #3dff8f;
+  --accent2: #00c46a;
+  --accent-dim: rgba(61,255,143,0.08);
+  --amber: #f5c842;
+  --red: #ff5757;
+  --orange: #ff8c42;
+  --mono: 'Space Mono', monospace;
+  --sans: 'Space Grotesk', sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;overflow-x:hidden}
+
+/* ── SCANLINE OVERLAY ── */
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px);pointer-events:none;z-index:9999}
+
+.wrap{max-width:1160px;margin:0 auto;padding:0 24px 80px}
+
+/* ── HEADER ── */
+header{padding:48px 0 36px;position:relative}
+.header-top{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px}
+.eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--accent2);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.eyebrow::before{content:'';width:24px;height:1px;background:var(--accent2)}
+h1{font-family:var(--sans);font-size:clamp(48px,7vw,88px);font-weight:700;line-height:.9;letter-spacing:-.03em;color:#fff}
+h1 em{color:var(--accent);font-style:normal}
+.header-meta{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.14em;margin-top:14px}
+
+.countdown-block{text-align:right;flex-shrink:0}
+.count-n{font-family:var(--mono);font-size:56px;font-weight:700;color:var(--accent);line-height:1;letter-spacing:-.04em}
+.count-l{font-family:var(--mono);font-size:9px;letter-spacing:.22em;color:var(--muted);text-transform:uppercase;margin-top:2px}
+
+.verdict{background:linear-gradient(135deg,rgba(61,255,143,.06),rgba(61,255,143,.02));border:1px solid rgba(61,255,143,.2);border-left:3px solid var(--accent);padding:24px 28px;margin:28px 0 44px;display:flex;gap:20px;align-items:flex-start}
+.verdict-ico{font-size:28px;flex-shrink:0}
+.verdict-head{font-family:var(--mono);font-size:13px;color:var(--accent);font-weight:700;letter-spacing:.06em;margin-bottom:8px}
+.verdict-body{font-size:13px;color:var(--text-dim);line-height:1.7}
+.verdict-body strong{color:var(--text)}
+
+/* ── SECTION LABEL ── */
+.slabel{font-family:var(--mono);font-size:9px;letter-spacing:.28em;text-transform:uppercase;color:var(--accent2);margin-bottom:18px;display:flex;align-items:center;gap:10px}
+.slabel::after{content:'';flex:1;height:1px;background:var(--border2)}
+
+/* ── STAT GRID ── */
+.stat-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:1px;background:var(--border);margin-bottom:44px}
+@media(max-width:800px){.stat-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:500px){.stat-grid{grid-template-columns:repeat(2,1fr)}}
+.sbox{background:var(--surface);padding:20px 16px;transition:background .15s}
+.sbox:hover{background:var(--surface2)}
+.sbox-l{font-family:var(--mono);font-size:8px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.sbox-v{font-size:28px;font-weight:700;line-height:1;color:#fff}
+.sbox-v.hi{color:var(--accent)}
+.sbox-u{font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:3px}
+
+/* ── MAP SECTION ── */
+.map-container{background:var(--surface);border:1px solid var(--border2);margin-bottom:44px;overflow:hidden}
+.map-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+.map-title{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--text-dim)}
+.map-legend{display:flex;gap:16px;flex-wrap:wrap}
+.leg-item{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:9px;color:var(--muted)}
+.leg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+#topoMap{width:100%;display:block;cursor:crosshair}
+
+/* ── ELEV PROFILE ── */
+.profile-wrap{background:var(--surface);border:1px solid var(--border2);padding:24px;margin-bottom:44px}
+.profile-title{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--text-dim);margin-bottom:16px}
+#elevCanvas{width:100%;display:block}
+.profile-km{display:flex;justify-content:space-between;margin-top:6px;font-family:var(--mono);font-size:8px;color:var(--muted)}
+
+/* ── PROJECTIONS ── */
+.proj-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:44px}
+@media(max-width:700px){.proj-row{grid-template-columns:repeat(2,1fr)}}
+.pcard{background:var(--surface);border:1px solid var(--border2);padding:20px;position:relative;overflow:hidden}
+.pcard::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.pcard.g::before{background:var(--accent)}
+.pcard.a::before{background:var(--amber)}
+.pcard.r::before{background:var(--muted)}
+.pcard-scenario{font-family:var(--mono);font-size:8px;letter-spacing:.14em;color:var(--muted);margin-bottom:10px;text-transform:uppercase}
+.pcard-desc{font-size:11px;color:var(--text-dim);margin-bottom:14px;line-height:1.5}
+.pcard-time{font-family:var(--mono);font-size:40px;font-weight:700;line-height:1;margin-bottom:4px}
+.pcard.g .pcard-time{color:var(--accent)}
+.pcard.a .pcard-time{color:var(--amber)}
+.pcard.r .pcard-time{color:var(--text-dim)}
+.pcard-note{font-family:var(--mono);font-size:9px;color:var(--muted)}
+.pbar{margin-top:12px;height:2px;background:var(--border);border-radius:1px;overflow:hidden}
+.pbar-fill{height:100%;transition:width 1.2s cubic-bezier(.16,1,.3,1);width:0}
+.pcard.g .pbar-fill{background:var(--accent)}
+.pcard.a .pbar-fill{background:var(--amber)}
+.pcard.r .pbar-fill{background:var(--muted)}
+
+/* ── CHARTS ── */
+.chart-wrap{background:var(--surface);border:1px solid var(--border2);padding:24px;margin-bottom:24px}
+.chart-title{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-dim);margin-bottom:18px}
+canvas.chart{max-height:260px}
+
+/* ── TABLE ── */
+.t-wrap{background:var(--surface);border:1px solid var(--border2);margin-bottom:44px;overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:11px}
+thead tr{border-bottom:1px solid var(--border2)}
+th{font-family:var(--mono);font-size:8px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);padding:10px 12px;text-align:left;font-weight:400;white-space:nowrap}
+td{padding:11px 12px;color:var(--text-dim);border-bottom:1px solid rgba(30,43,37,.6);font-family:var(--mono);font-size:10px;white-space:nowrap}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(23,32,25,.8)}
+td.hi{color:var(--accent);font-weight:700}
+td.gd{color:var(--accent2)}
+td.am{color:var(--amber)}
+
+/* ── ASSESSMENT ── */
+.assess-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:44px}
+@media(max-width:640px){.assess-grid{grid-template-columns:1fr}}
+.acard{background:var(--surface);border:1px solid var(--border2);padding:24px}
+.acard h3{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:16px;font-family:var(--mono)}
+.acard.str h3{color:var(--accent)}
+.acard.risk h3{color:var(--red)}
+.aitem{display:flex;gap:10px;margin-bottom:11px;font-size:12px;color:var(--text-dim);line-height:1.6}
+.abullet{flex-shrink:0;margin-top:2px;font-size:10px}
+.acard.str .abullet{color:var(--accent)}
+.acard.risk .abullet{color:var(--red)}
+.aitem strong{color:var(--text)}
+
+/* ── PACING PLAN ── */
+.pace-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:44px}
+@media(max-width:700px){.pace-grid{grid-template-columns:repeat(2,1fr)}}
+.pzone{background:var(--surface);border:1px solid var(--border2);padding:20px;border-top:2px solid}
+.pzone.z1{border-top-color:var(--accent)}
+.pzone.z2{border-top-color:var(--amber)}
+.pzone.z3{border-top-color:var(--amber)}
+.pzone.z4{border-top-color:var(--orange)}
+.pzone-km{font-family:var(--mono);font-size:8px;letter-spacing:.16em;color:var(--muted);margin-bottom:8px;text-transform:uppercase}
+.pzone-pace{font-family:var(--mono);font-size:28px;font-weight:700;line-height:1;margin-bottom:8px}
+.pzone.z1 .pzone-pace{color:var(--accent)}
+.pzone.z2 .pzone-pace{color:var(--amber)}
+.pzone.z3 .pzone-pace{color:var(--amber)}
+.pzone.z4 .pzone-pace{color:var(--orange)}
+.pzone-note{font-size:11px;color:var(--text-dim);line-height:1.5}
+
+footer{border-top:1px solid var(--border2);padding-top:20px;font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:.08em;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+
+/* fade-in */
+.fi{opacity:0;transform:translateY(16px);transition:opacity .5s ease,transform .5s ease}
+.fi.vis{opacity:1;transform:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- HEADER -->
+<header>
+  <div class="header-top">
+    <div>
+      <div class="eyebrow">Race Readiness Report · Strava Data Analysis</div>
+      <h1>LAVAREDO<br><em>20K</em></h1>
+      <div class="header-meta">CORTINA D'AMPEZZO · DOLOMITES · 26 JUNE 2026 · 17:00 · 1,000M D+</div>
+    </div>
+    <div class="countdown-block">
+      <div class="count-n" id="daysLeft">15</div>
+      <div class="count-l">Days to Race</div>
+    </div>
+  </div>
+</header>
+
+<!-- VERDICT -->
+<div class="verdict fi">
+  <div class="verdict-ico">⚡</div>
+  <div>
+    <div class="verdict-head">SUB-4H IS WELL WITHIN REACH — TARGET 3H15–3H30</div>
+    <div class="verdict-body">
+      Segment model projects <strong>2h53m–3h51m</strong> across all scenarios. Descent pace of <strong>5:30–6:00/km</strong> banks 28+ minutes on the final 5km — that's your race weapon. Even worst-case altitude conditions leave a <strong>9-minute buffer</strong>. The climb is where patience wins; the descent is where you race.
+    </div>
+  </div>
+</div>
+
+<!-- RACE SPECS -->
+<div class="slabel">Race Profile</div>
+<div class="stat-grid fi">
+  <div class="sbox"><div class="sbox-l">Distance</div><div class="sbox-v hi">20</div><div class="sbox-u">kilometres</div></div>
+  <div class="sbox"><div class="sbox-l">Elevation D+</div><div class="sbox-v hi">1,000</div><div class="sbox-u">metres ascent</div></div>
+  <div class="sbox"><div class="sbox-l">ITRA Flat Equiv</div><div class="sbox-v">31.1</div><div class="sbox-u">km equivalent</div></div>
+  <div class="sbox"><div class="sbox-l">Time Limit</div><div class="sbox-v">4h</div><div class="sbox-u">hard cutoff</div></div>
+  <div class="sbox"><div class="sbox-l">Aid Station</div><div class="sbox-v">km 15</div><div class="sbox-u">Malga Larieto</div></div>
+  <div class="sbox"><div class="sbox-l">Start Alt</div><div class="sbox-v">1,224</div><div class="sbox-u">m (Cortina)</div></div>
+</div>
+
+<!-- TOPO MAP -->
+<div class="slabel">Course Topographic Map — Lavaredo 20K Route</div>
+<div class="map-container fi">
+  <div class="map-header">
+    <div class="map-title">Cortina d'Ampezzo → Mt Pomagagnon → Forcella Zumeles → Malga Larieto → Cortina</div>
+    <div class="map-legend">
+      <div class="leg-item"><div class="leg-dot" style="background:#3dff8f"></div>Start / Finish</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#f5c842"></div>Aid Station (km 15)</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#ff8c42"></div>Summit Forcella Zumeles</div>
+      <div class="leg-item"><div class="leg-dot" style="background:rgba(61,255,143,0.5);width:16px;height:3px;border-radius:2px"></div>Trail Route</div>
+    </div>
+  </div>
+  <canvas id="topoMap"></canvas>
+</div>
+
+<!-- ELEVATION PROFILE -->
+<div class="slabel">Elevation Profile</div>
+<div class="profile-wrap fi">
+  <div class="profile-title">Altitude (m) over Race Distance (km) — Lavaredo 20K</div>
+  <canvas id="elevCanvas" height="200"></canvas>
+  <div class="profile-km">
+    <span>0 · START 1,224m</span>
+    <span>5km</span>
+    <span>10km</span>
+    <span>15km · AID</span>
+    <span>20km · FINISH</span>
+  </div>
+</div>
+
+<!-- PROJECTIONS -->
+<div class="slabel">Finish Time Projections — Segment Model</div>
+<div class="proj-row fi">
+  <div class="pcard g">
+    <div class="pcard-scenario">Best Case</div>
+    <div class="pcard-desc">6:00/km open · 12:30/km climb · 5:30/km descent</div>
+    <div class="pcard-time">2:53</div>
+    <div class="pcard-note">Run every runnable section</div>
+    <div class="pbar"><div class="pbar-fill" data-w="99"></div></div>
+  </div>
+  <div class="pcard g">
+    <div class="pcard-scenario">Realistic Target</div>
+    <div class="pcard-desc">6:15/km open · 15:00/km climb · 5:45/km descent</div>
+    <div class="pcard-time">3:13</div>
+    <div class="pcard-note">47-min sub-4h buffer</div>
+    <div class="pbar"><div class="pbar-fill" data-w="93"></div></div>
+  </div>
+  <div class="pcard a">
+    <div class="pcard-scenario">Conservative</div>
+    <div class="pcard-desc">6:20/km open · 17:00/km climb · 6:00/km descent</div>
+    <div class="pcard-time">3:30</div>
+    <div class="pcard-note">30-min comfort margin</div>
+    <div class="pbar"><div class="pbar-fill" data-w="80"></div></div>
+  </div>
+  <div class="pcard r">
+    <div class="pcard-scenario">Worst Case</div>
+    <div class="pcard-desc">6:30/km open · 19:00/km climb · 6:30/km descent</div>
+    <div class="pcard-time">3:51</div>
+    <div class="pcard-note">Still 9 min inside the goal</div>
+    <div class="pbar"><div class="pbar-fill" data-w="66"></div></div>
+  </div>
+</div>
+
+<!-- TRAINING VOLUME CHART -->
+<div class="slabel">Training Volume — Last 18 Months</div>
+<div class="chart-wrap fi">
+  <div class="chart-title">Monthly Run Distance (km) + Elevation Gain D+ (m)</div>
+  <canvas id="volChart" class="chart"></canvas>
+</div>
+
+<!-- KEY ACTIVITIES TABLE -->
+<div class="slabel">Key Reference Activities</div>
+<div class="t-wrap fi">
+<table>
+  <thead>
+    <tr>
+      <th>Date</th><th>Activity</th><th>Dist</th><th>D+</th><th>D+/km</th><th>Pace</th><th>ITRA eq</th><th>Proj</th><th>HR avg/max</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td class="hi">10 Jun 2026</td><td>Zwift Volcano Circuit</td><td>6.1km</td><td>—</td><td>virtual</td><td class="gd">5:41/km</td><td>—</td><td>—</td><td>152/189</td></tr>
+    <tr><td class="hi">8 Jun 2026</td><td>Zwift Titan's Run</td><td>10.1km</td><td>—</td><td>virtual</td><td class="gd">5:59/km</td><td>—</td><td>—</td><td>151/167</td></tr>
+    <tr><td>May 2026</td><td>Trail Run (pre-taper)</td><td>12.6km</td><td>387m</td><td class="gd">31m/km</td><td>10:17/km</td><td>16.5km</td><td class="gd">4h04m</td><td>152</td></tr>
+    <tr><td>5 Jun 2026</td><td>Long Trail (flat)</td><td>19.3km</td><td>37m</td><td>2m/km</td><td>7:07/km</td><td>19.7km</td><td>—</td><td>150</td></tr>
+    <tr><td>1 Jul 2024</td><td>Cannobio Trail Race</td><td>13.0km</td><td>910m</td><td class="gd">70m/km</td><td>14:06/km</td><td>22.1km</td><td class="am">4h18m</td><td>—</td></tr>
+    <tr><td>2 Jul 2025</td><td>Alpine Hike</td><td>19.9km</td><td>1,102m</td><td class="gd">55m/km</td><td>18:15/km</td><td>30.9km</td><td>—</td><td>115</td></tr>
+    <tr><td>10 Jul 2025</td><td>Alpine Hike (biggest D+)</td><td>23.8km</td><td class="hi">1,799m</td><td class="hi">76m/km</td><td>19:26/km</td><td>41.8km</td><td>—</td><td>110</td></tr>
+    <tr><td>22 Nov 2025</td><td>Via Ferrata Hike</td><td>6.3km</td><td>601m</td><td class="hi">96m/km</td><td>17:09/km</td><td>12.3km</td><td>—</td><td>120</td></tr>
+  </tbody>
+</table>
+</div>
+
+<!-- PACE CHART -->
+<div class="slabel">ITRA Pace Comparison</div>
+<div class="chart-wrap fi">
+  <div class="chart-title">Effective ITRA Pace (min/km) by Activity — Reference Lines: 3h13 Target & 4h Goal</div>
+  <canvas id="paceChart" class="chart"></canvas>
+</div>
+
+<!-- ASSESSMENT -->
+<div class="slabel">Race Assessment</div>
+<div class="assess-grid fi">
+  <div class="acard str">
+    <h3>▲ Strengths</h3>
+    <div class="aitem"><span class="abullet">+</span><span><strong>Robust aerobic base.</strong> 415km run + 376km hiked in 12 months. Long-duration cardiovascular capacity is well established.</span></div>
+    <div class="aitem"><span class="abullet">+</span><span><strong>Mountain legs from summer 2025.</strong> 11 days of alpine hiking, up to 1,799m D+ per day. Your legs understand sustained steep ascent.</span></div>
+    <div class="aitem"><span class="abullet">+</span><span><strong>Descent pace is elite.</strong> Confirmed 5:30–6:00/km downhill. The 5km descent from km 15 banks 28+ minutes on anyone hiking it.</span></div>
+    <div class="aitem"><span class="abullet">+</span><span><strong>Sharp flat speed in taper week.</strong> Zwift Jun 8 & 10: 5:41–5:59/km at HR 152 — the engine is primed.</span></div>
+    <div class="aitem"><span class="abullet">+</span><span><strong>Controlled HR under load.</strong> Long efforts consistently HR 110–155 — aerobic zone, not redlining.</span></div>
+    <div class="aitem"><span class="abullet">+</span><span><strong>Rock climbing proprioception.</strong> Technical terrain confidence translates directly to Dolomite rocky trails.</span></div>
+  </div>
+  <div class="acard risk">
+    <h3>▼ Risks &amp; Watch Points</h3>
+    <div class="aitem"><span class="abullet">!</span><span><strong>Limited run-specific vertical.</strong> Only 452m total D+ in May runs. Trail legs behave differently from flat legs on 1,000m of race climbing.</span></div>
+    <div class="aitem"><span class="abullet">!</span><span><strong>Longest trail run is 12.6km.</strong> The race is 20km — the final 7km at altitude will be uncharted fatigue territory. Run conservative in the first half.</span></div>
+    <div class="aitem"><span class="abullet">!</span><span><strong>Altitude at Cortina (1,224m+).</strong> Peaks reach ~2,100m. Expect 5–8% reduced oxygen delivery without prior acclimatisation — build pace buffer in.</span></div>
+    <div class="aitem"><span class="abullet">!</span><span><strong>17:00 start → evening running.</strong> Temperature drops post-sunset during the descent. Pack mandatory 500ml but prepare for cooling conditions km 15–20.</span></div>
+    <div class="aitem"><span class="abullet">!</span><span><strong>No poles.</strong> Quad-dominant descent without assistance. The 5km downhill at race-end on tired legs will test eccentric strength hard.</span></div>
+  </div>
+</div>
+
+<!-- PACING PLAN -->
+<div class="slabel">Race Day Pacing Blueprint — Target 3h15–3h30</div>
+<div class="pace-grid fi">
+  <div class="pzone z1">
+    <div class="pzone-km">KM 0–5 · Flat Opener</div>
+    <div class="pzone-pace">6:00–6:30</div>
+    <div class="pzone-note">Confirmed comfortable race pace. Resist the adrenaline — let faster starters go. You'll see them again on the descent.</div>
+  </div>
+  <div class="pzone z2">
+    <div class="pzone-km">KM 5–12 · Main Climb</div>
+    <div class="pzone-pace">12–17/km</div>
+    <div class="pzone-note">Power-hike the steep sections. Run only the runnable. HR cap ~160. Patience here is how you win on the descent.</div>
+  </div>
+  <div class="pzone z3">
+    <div class="pzone-km">KM 12–15 · Ridge &amp; Aid</div>
+    <div class="pzone-pace">9–10/km</div>
+    <div class="pzone-note">Aid station at km 15 (Malga Larieto). Eat, drink, don't stop moving. Mentally: the next 5km are yours.</div>
+  </div>
+  <div class="pzone z4">
+    <div class="pzone-km">KM 15–20 · Descent 🔥</div>
+    <div class="pzone-pace">5:30–6:00</div>
+    <div class="pzone-note">Your strongest gear. Lean forward, fast cadence, trust your footwork. This is where you race — and win.</div>
+  </div>
+</div>
+
+<footer>
+  <span>Based on 2,255+ Strava activities (2013–2026) + 3 GPX sessions (Jun 7–10, 2026)</span>
+  <span>Method: Segment model · ITRA Trail Equivalence · Confirmed descent 5:30–6:00/km</span>
+  <span>Updated: 11 June 2026</span>
+</footer>
+
+</div><!-- /wrap -->
+
+<script>
+/* ── COUNTDOWN ── */
+const race = new Date('2026-06-26');
+const now  = new Date('2026-06-11');
+document.getElementById('daysLeft').textContent = Math.round((race-now)/86400000);
+
+/* ── FADE-IN OBSERVER ── */
+const obs = new IntersectionObserver(entries=>{
+  entries.forEach(e=>{ if(e.isIntersecting) e.target.classList.add('vis'); });
+},{threshold:0.12});
+document.querySelectorAll('.fi').forEach(el=>obs.observe(el));
+
+/* ══════════════════════════════════════
+   TOPOGRAPHIC MAP — Lavaredo 20K
+   Coordinate space: approx bounding box
+   Lat  46.530 → 46.580  (N)
+   Lon  12.080 → 12.145  (E)
+══════════════════════════════════════ */
+function drawTopoMap(){
+  const canvas = document.getElementById('topoMap');
+  const W = canvas.parentElement.clientWidth;
+  const H = Math.min(W * 0.58, 440);
+  canvas.width  = W * window.devicePixelRatio;
+  canvas.height = H * window.devicePixelRatio;
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+  // Geographic bounds
+  const LAT_MIN=46.526, LAT_MAX=46.580;
+  const LON_MIN=12.072, LON_MAX=12.152;
+
+  function proj(lat,lon){
+    const x = (lon-LON_MIN)/(LON_MAX-LON_MIN)*W;
+    const y = (1-(lat-LAT_MIN)/(LAT_MAX-LAT_MIN))*H;
+    return [x,y];
+  }
+
+  // ── BACKGROUND ──
+  ctx.fillStyle='#0f1612';
+  ctx.fillRect(0,0,W,H);
+
+  // ── TOPO CONTOUR LINES ──
+  // We'll draw stylised concentric terrain forms for the main peaks
+  // Monte Cristallo area (NE), Pomagagnon ridge (N), Faloria (SE), main valley (centre)
+  function drawContours(cx,cy,rx,ry,count,col,alpha){
+    for(let i=count;i>0;i--){
+      const t=i/count;
+      ctx.beginPath();
+      ctx.ellipse(cx,cy,rx*t,ry*t,0,0,Math.PI*2);
+      ctx.strokeStyle=`rgba(${col},${alpha*t})`;
+      ctx.lineWidth=0.5;
+      ctx.stroke();
+    }
+  }
+
+  // Monte Cristallo peak — NE
+  const [mcx,mcy]=proj(46.574,12.145);
+  drawContours(mcx,mcy,80,50,8,'130,200,160',0.35);
+
+  // Pomagagnon ridge — N
+  const [pmx,pmy]=proj(46.560,12.102);
+  drawContours(pmx,pmy,90,45,10,'130,200,160',0.32);
+
+  // Mt Faloria / Forcella Zumeles area
+  const [fzx,fzy]=proj(46.548,12.126);
+  drawContours(fzx,fzy,60,38,7,'130,200,160',0.28);
+
+  // Tofana hill — W
+  const [tfx,tfy]=proj(46.552,12.075);
+  drawContours(tfx,tfy,55,35,6,'130,200,160',0.22);
+
+  // Cortina valley floor — light fill
+  ctx.beginPath();
+  ctx.ellipse(...proj(46.536,12.108),75,30,0.1,0,Math.PI*2);
+  ctx.fillStyle='rgba(20,36,26,0.8)';
+  ctx.fill();
+
+  // ── VALLEY RIVER (Boite) ──
+  const riverPts=[
+    proj(46.580,12.090), proj(46.568,12.095), proj(46.555,12.100),
+    proj(46.540,12.103), proj(46.530,12.108)
+  ];
+  ctx.beginPath();
+  ctx.moveTo(...riverPts[0]);
+  for(let i=1;i<riverPts.length;i++){
+    const [px,py]=riverPts[i-1],[cx2,cy2]=riverPts[i];
+    ctx.bezierCurveTo(px,py+5,cx2,cy2-5,cx2,cy2);
+  }
+  ctx.strokeStyle='rgba(61,140,255,0.25)';
+  ctx.lineWidth=2;
+  ctx.stroke();
+
+  // ── GRID LINES ──
+  ctx.strokeStyle='rgba(30,43,37,0.6)';
+  ctx.lineWidth=0.5;
+  for(let lat=46.53;lat<46.58;lat+=0.01){
+    const [,y]=proj(lat,LON_MIN);
+    ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();
+  }
+  for(let lon=12.08;lon<12.15;lon+=0.01){
+    const [x]=proj(LAT_MIN,lon);
+    ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();
+  }
+
+  // ── TRAIL ROUTE ──
+  // Route: Cortina (start) → Fiames → path 218 base Pomagagnon →
+  //        path 211 traverse → path 204 up to Forcella Zumeles →
+  //        descent via Larieto forest → Cortina (finish)
+  const route=[
+    [46.536,12.136], // Start — Corso Italia, Cortina
+    [46.541,12.131], // Head N on Ciclabile delle Dolomiti
+    [46.548,12.119], // Near Fiames sports centre
+    [46.553,12.113], // Turn onto path 218
+    [46.558,12.107], // Base of Pomagagnon
+    [46.561,12.103], // Ascending path 218 into forest
+    [46.564,12.100], // Path junction → 211
+    [46.566,12.104], // Path 211 traverse east
+    [46.566,12.112], // Continue traverse
+    [46.564,12.119], // Steep path 204 begins
+    [46.562,12.126], // Climbing bends
+    [46.557,12.130], // Approaching summit
+    [46.552,12.132], // FORCELLA ZUMELES summit ~2,100m
+    [46.547,12.129], // Begin descent SE
+    [46.543,12.125], // Larieto larch forest
+    [46.540,12.121], // Malga Larieto — AID km15
+    [46.538,12.120], // Descent continues
+    [46.537,12.125], // Trail winds
+    [46.536,12.130], // Entering Cortina outskirts
+    [46.536,12.136], // FINISH — Corso Italia
+  ];
+
+  // Draw shadow/glow
+  ctx.save();
+  ctx.shadowColor='rgba(61,255,143,0.4)';
+  ctx.shadowBlur=8;
+  ctx.beginPath();
+  ctx.moveTo(...proj(...route[0]));
+  for(let i=1;i<route.length;i++){
+    const [px,py]=proj(...route[i-1]);
+    const [cx2,cy2]=proj(...route[i]);
+    const cpx=(px+cx2)/2;
+    ctx.bezierCurveTo(cpx,py,cpx,cy2,cx2,cy2);
+  }
+  ctx.strokeStyle='rgba(61,255,143,0.15)';
+  ctx.lineWidth=6;
+  ctx.stroke();
+  ctx.restore();
+
+  // Draw main trail line
+  ctx.beginPath();
+  ctx.moveTo(...proj(...route[0]));
+  for(let i=1;i<route.length;i++){
+    const [px,py]=proj(...route[i-1]);
+    const [cx2,cy2]=proj(...route[i]);
+    const cpx=(px+cx2)/2;
+    ctx.bezierCurveTo(cpx,py,cpx,cy2,cx2,cy2);
+  }
+  // Gradient along route: green (flat) → amber (climb) → orange (summit) → green (descent)
+  const g=ctx.createLinearGradient(...proj(...route[0]),...proj(...route[10]));
+  g.addColorStop(0,'#3dff8f');
+  g.addColorStop(0.35,'#f5c842');
+  g.addColorStop(0.55,'#ff8c42');
+  g.addColorStop(0.65,'#ff8c42');
+  g.addColorStop(0.85,'#3dff8f');
+  g.addColorStop(1,'#3dff8f');
+  ctx.strokeStyle=g;
+  ctx.lineWidth=2.5;
+  ctx.lineCap='round';
+  ctx.lineJoin='round';
+  ctx.stroke();
+
+  // Distance markers every ~5km (approx route points)
+  const kmMarkers=[
+    {pt:route[3],  label:'5km', col:'#7a9e8e'},
+    {pt:route[8],  label:'10km',col:'#7a9e8e'},
+    {pt:route[15], label:'15km',col:'#f5c842'},  // aid
+    {pt:route[19], label:'20km',col:'#3dff8f'},
+  ];
+  kmMarkers.forEach(({pt,label,col})=>{
+    const [x,y]=proj(...pt);
+    ctx.beginPath();
+    ctx.arc(x,y,3.5,0,Math.PI*2);
+    ctx.fillStyle=col;
+    ctx.fill();
+    ctx.font=`bold 9px 'Space Mono', monospace`;
+    ctx.fillStyle=col;
+    ctx.fillText(label,x+6,y+3);
+  });
+
+  // ── KEY WAYPOINTS ──
+  const waypoints=[
+    {lat:46.536,lon:12.136,label:'START / FINISH\nCorso Italia, Cortina\n1,224m',col:'#3dff8f',r:7,icon:'S'},
+    {lat:46.552,lon:12.132,label:'Forcella Zumeles\nHighest Point ~2,100m',col:'#ff8c42',r:6,icon:'▲'},
+    {lat:46.540,lon:12.121,label:'Malga Larieto\nAid Station · km 15',col:'#f5c842',r:6,icon:'A'},
+    {lat:46.548,lon:12.119,label:'Fiames\nPath 218 turn-off',col:'#7a9e8e',r:4,icon:'·'},
+  ];
+
+  waypoints.forEach(({lat,lon,label,col,r,icon})=>{
+    const [x,y]=proj(lat,lon);
+    // Outer ring
+    ctx.beginPath();
+    ctx.arc(x,y,r+3,0,Math.PI*2);
+    ctx.fillStyle=col+'22';
+    ctx.fill();
+    // Dot
+    ctx.beginPath();
+    ctx.arc(x,y,r,0,Math.PI*2);
+    ctx.fillStyle=col;
+    ctx.fill();
+    // Icon text
+    ctx.font=`bold ${r>5?9:7}px 'Space Mono', monospace`;
+    ctx.fillStyle='#0b0f0e';
+    ctx.textAlign='center';
+    ctx.textBaseline='middle';
+    ctx.fillText(icon,x,y);
+    ctx.textAlign='left';
+    ctx.textBaseline='alphabetic';
+    // Label
+    const lines=label.split('\n');
+    ctx.font=`9px 'Space Mono', monospace`;
+    ctx.fillStyle=col;
+    lines.forEach((ln,i)=>{
+      ctx.fillText(ln,x+r+6,y-((lines.length-1)*6)+i*11);
+    });
+  });
+
+  // ── TERRAIN LABELS ──
+  const terrainLabels=[
+    {lat:46.568,lon:12.103,text:'Monte Pomagagnon',size:8,col:'rgba(130,200,160,0.5)'},
+    {lat:46.573,lon:12.142,text:'Monte Cristallo',size:8,col:'rgba(130,200,160,0.45)'},
+    {lat:46.554,lon:12.078,text:'Tofana di Rozes',size:7,col:'rgba(130,200,160,0.4)'},
+  ];
+  terrainLabels.forEach(({lat,lon,text,size,col})=>{
+    const [x,y]=proj(lat,lon);
+    ctx.font=`italic ${size}px 'Space Grotesk', sans-serif`;
+    ctx.fillStyle=col;
+    ctx.textAlign='center';
+    ctx.fillText(text,x,y);
+    ctx.textAlign='left';
+  });
+
+  // ── COMPASS ROSE ── (bottom right)
+  const cr=[W-32,H-32];
+  ctx.font=`bold 8px 'Space Mono', monospace`;
+  ctx.fillStyle='rgba(61,255,143,0.5)';
+  ctx.textAlign='center';
+  ctx.fillText('N',cr[0],cr[1]-14);
+  ctx.beginPath();
+  ctx.moveTo(cr[0],cr[1]-10);ctx.lineTo(cr[0],cr[1]+10);
+  ctx.moveTo(cr[0]-10,cr[1]);ctx.lineTo(cr[0]+10,cr[1]);
+  ctx.strokeStyle='rgba(61,255,143,0.3)';
+  ctx.lineWidth=1;
+  ctx.stroke();
+  ctx.textAlign='left';
+
+  // ── SCALE BAR ── (bottom left)
+  const [sx1]=proj(46.530,12.090);
+  const [sx2]=proj(46.530,12.105); // ~1km approx
+  const scalePx=Math.abs(sx2-sx1);
+  ctx.strokeStyle='rgba(120,200,150,0.5)';
+  ctx.lineWidth=1.5;
+  ctx.beginPath();
+  ctx.moveTo(20,H-18);ctx.lineTo(20+scalePx,H-18);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(20,H-21);ctx.lineTo(20,H-15);
+  ctx.moveTo(20+scalePx,H-21);ctx.lineTo(20+scalePx,H-15);
+  ctx.stroke();
+  ctx.font=`8px 'Space Mono', monospace`;
+  ctx.fillStyle='rgba(120,200,150,0.6)';
+  ctx.fillText('~1km',20+scalePx/2-10,H-5);
+}
+
+/* ── ELEVATION PROFILE ── */
+function drawElev(){
+  const canvas=document.getElementById('elevCanvas');
+  const W=canvas.parentElement.clientWidth-48;
+  const H=200;
+  canvas.width=W*window.devicePixelRatio;
+  canvas.height=H*window.devicePixelRatio;
+  canvas.style.width=W+'px';
+  canvas.style.height=H+'px';
+  const ctx=canvas.getContext('2d');
+  ctx.scale(window.devicePixelRatio,window.devicePixelRatio);
+
+  const pts=[
+    {x:0,e:1224},{x:1,e:1235},{x:2,e:1270},{x:3,e:1340},
+    {x:4,e:1430},{x:5,e:1530},{x:6,e:1650},{x:7,e:1770},
+    {x:8,e:1870},{x:9,e:1960},{x:10,e:2030},{x:11,e:2080},
+    {x:12,e:2100},{x:13,e:2080},{x:14,e:2000},{x:15,e:1900},
+    {x:16,e:1730},{x:17,e:1570},{x:18,e:1420},{x:19,e:1300},
+    {x:20,e:1224}
+  ];
+  const eMin=1000,eMax=2200,pad={l:8,r:8,t:12,b:6};
+
+  function tc(x,e){
+    return [
+      pad.l+(x/20)*(W-pad.l-pad.r),
+      pad.t+((eMax-e)/(eMax-eMin))*(H-pad.t-pad.b)
+    ];
+  }
+
+  // Gradient fill
+  const g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'rgba(61,255,143,0.25)');
+  g.addColorStop(0.6,'rgba(61,255,143,0.06)');
+  g.addColorStop(1,'rgba(61,255,143,0.01)');
+
+  ctx.beginPath();
+  const [x0,y0]=tc(0,pts[0].e);
+  ctx.moveTo(x0,H-pad.b);
+  ctx.lineTo(x0,y0);
+  for(let i=1;i<pts.length;i++){
+    const [cx2,cy2]=tc(pts[i].x,pts[i].e);
+    const [px,py]=tc(pts[i-1].x,pts[i-1].e);
+    ctx.bezierCurveTo((px+cx2)/2,py,(px+cx2)/2,cy2,cx2,cy2);
+  }
+  const [xl,yl]=tc(20,pts[pts.length-1].e);
+  ctx.lineTo(xl,H-pad.b);
+  ctx.closePath();
+  ctx.fillStyle=g;
+  ctx.fill();
+
+  // Climb zone highlight
+  const [cx5]=tc(5,0),[cx12]=tc(12,0);
+  ctx.fillStyle='rgba(245,200,66,0.06)';
+  ctx.fillRect(cx5,0,cx12-cx5,H);
+
+  // Descent zone highlight
+  const [cx15]=tc(15,0),[cx20]=tc(20,0);
+  ctx.fillStyle='rgba(255,140,66,0.06)';
+  ctx.fillRect(cx15,0,cx20-cx15,H);
+
+  // Line
+  ctx.beginPath();
+  const [lx0,ly0]=tc(0,pts[0].e);
+  ctx.moveTo(lx0,ly0);
+  for(let i=1;i<pts.length;i++){
+    const [cx2,cy2]=tc(pts[i].x,pts[i].e);
+    const [px,py]=tc(pts[i-1].x,pts[i-1].e);
+    ctx.bezierCurveTo((px+cx2)/2,py,(px+cx2)/2,cy2,cx2,cy2);
+  }
+  const lg=ctx.createLinearGradient(0,0,W,0);
+  lg.addColorStop(0,'#3dff8f');
+  lg.addColorStop(0.28,'#f5c842');
+  lg.addColorStop(0.6,'#ff8c42');
+  lg.addColorStop(0.75,'#3dff8f');
+  lg.addColorStop(1,'#3dff8f');
+  ctx.strokeStyle=lg;
+  ctx.lineWidth=2;
+  ctx.stroke();
+
+  // Gridlines
+  [1400,1600,1800,2000].forEach(e=>{
+    const [,gy]=tc(0,e);
+    ctx.beginPath();ctx.moveTo(pad.l,gy);ctx.lineTo(W-pad.r,gy);
+    ctx.strokeStyle='rgba(30,43,37,0.8)';ctx.lineWidth=0.5;ctx.setLineDash([3,5]);ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.font=`8px 'Space Mono',monospace`;ctx.fillStyle='rgba(74,99,88,0.9)';
+    ctx.fillText(e+'m',pad.l+2,gy-3);
+  });
+
+  // Aid station marker
+  const [ax,ay]=tc(15,1900);
+  ctx.beginPath();ctx.arc(ax,ay,5,0,Math.PI*2);
+  ctx.fillStyle='#f5c842';ctx.fill();
+  ctx.font=`bold 8px 'Space Mono',monospace`;ctx.fillStyle='#f5c842';
+  ctx.fillText('AID',ax-10,ay-9);
+
+  // Summit marker
+  const [smx,smy]=tc(12,2100);
+  ctx.beginPath();ctx.arc(smx,smy,5,0,Math.PI*2);
+  ctx.fillStyle='#ff8c42';ctx.fill();
+  ctx.font=`bold 8px 'Space Mono',monospace`;ctx.fillStyle='#ff8c42';
+  ctx.fillText('2,100m',smx+7,smy+3);
+
+  // Zone labels
+  ctx.font=`7px 'Space Mono',monospace`;
+  ctx.fillStyle='rgba(245,200,66,0.5)';
+  ctx.fillText('CLIMB',cx5+4,H-10);
+  ctx.fillStyle='rgba(255,140,66,0.6)';
+  ctx.fillText('DESCENT',cx15+4,H-10);
+}
+
+/* ── VOLUME CHART ── */
+const vCtx=document.getElementById('volChart').getContext('2d');
+const vLabels=['Jan 25','Feb 25','Mar 25','Apr 25','May 25','Jun 25','Jul 25','Aug 25','Sep 25','Oct 25','Nov 25','Dec 25','Jan 26','Feb 26','Mar 26','Apr 26','May 26','Jun 26 ↗'];
+const vKm=[23.1,38.2,18.4,18.2,29.7,25.6,16.9,24.6,41.2,25.9,27.5,32.7,51.7,21.8,14.2,45.0,60.8,28.0];
+const vElev=[652,49,18,11,55,2416,9770,103,103,48,1248,73,74,17,14,569,646,54];
+
+new Chart(vCtx,{
+  type:'bar',
+  data:{
+    labels:vLabels,
+    datasets:[
+      {label:'Run km',data:vKm,
+       backgroundColor:ctx=>ctx.dataIndex>=12?'rgba(61,255,143,0.7)':'rgba(61,255,143,0.25)',
+       borderRadius:2,yAxisID:'y',order:2},
+      {label:'D+ total (m)',data:vElev,type:'line',
+       borderColor:'#f5c842',backgroundColor:'rgba(245,200,66,0.07)',
+       borderWidth:1.5,pointRadius:2,pointBackgroundColor:'#f5c842',
+       tension:0.35,yAxisID:'y1',order:1,fill:true}
+    ]
+  },
+  options:{
+    responsive:true,
+    interaction:{mode:'index',intersect:false},
+    plugins:{
+      legend:{labels:{color:'#4a6358',font:{family:"'Space Mono',monospace",size:10},boxWidth:10}},
+      tooltip:{backgroundColor:'#111715',borderColor:'#1e2b25',borderWidth:1,
+        titleColor:'#dde8e2',bodyColor:'#7a9e8e',
+        titleFont:{family:"'Space Mono',monospace",size:10},
+        bodyFont:{family:"'Space Mono',monospace",size:9}}
+    },
+    scales:{
+      x:{grid:{color:'rgba(30,43,37,0.6)'},ticks:{color:'#4a6358',font:{family:"'Space Mono',monospace",size:8},maxRotation:45}},
+      y:{grid:{color:'rgba(30,43,37,0.6)'},ticks:{color:'#4a6358',font:{family:"'Space Mono',monospace",size:9},callback:v=>v+'km'},
+         title:{display:true,text:'Run Distance (km)',color:'#4a6358',font:{size:9}}},
+      y1:{position:'right',grid:{display:false},ticks:{color:'#f5c842',font:{family:"'Space Mono',monospace",size:9},callback:v=>v+'m'},
+          title:{display:true,text:'Elev D+ (m)',color:'#f5c842',font:{size:9}}}
+    }
+  }
+});
+
+/* ── PACE CHART ── */
+const pCtx=document.getElementById('paceChart').getContext('2d');
+const pData=[
+  {l:'Zwift 10 Jun\n6km flat',v:5+41/60,c:'#3dff8f'},
+  {l:'Zwift 8 Jun\n10km flat',v:5+59/60,c:'#3dff8f'},
+  {l:'Trail May 26\n12.6km',v:10+17/60,c:'#f5c842'},
+  {l:'Cannobio\n2024 race',v:(4*60+18)/22.1,c:'#f5c842'},
+  {l:'Target 3h13\nITRA pace',v:(3*60+13)/31.1,c:'#00c46a'},
+  {l:'Goal 4h\nITRA pace',v:(4*60)/31.1,c:'#4a6358'},
+];
+const fmtP=v=>{const m=Math.floor(v),s=Math.round((v-m)*60);return`${m}:${s.toString().padStart(2,'0')}`};
+
+new Chart(pCtx,{
+  type:'bar',
+  data:{
+    labels:pData.map(d=>d.l),
+    datasets:[{data:pData.map(d=>d.v),
+      backgroundColor:pData.map(d=>d.c+'aa'),
+      borderColor:pData.map(d=>d.c),
+      borderWidth:1,borderRadius:3}]
+  },
+  options:{
+    indexAxis:'y',responsive:true,
+    plugins:{
+      legend:{display:false},
+      tooltip:{backgroundColor:'#111715',borderColor:'#1e2b25',borderWidth:1,
+        titleColor:'#dde8e2',bodyColor:'#7a9e8e',
+        callbacks:{label:ctx=>` ITRA Pace: ${fmtP(ctx.raw)}/km`}}
+    },
+    scales:{
+      x:{min:5,max:12,grid:{color:'rgba(30,43,37,0.6)'},
+         ticks:{color:'#4a6358',font:{family:"'Space Mono',monospace",size:9},callback:v=>fmtP(v)+'/km'}},
+      y:{grid:{color:'rgba(30,43,37,0.5)'},ticks:{color:'#7a9e8e',font:{family:"'Space Mono',monospace",size:9}}}
+    }
+  }
+});
+
+/* ── PROJECTION BAR ANIMATION ── */
+const pObs=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      e.target.querySelectorAll('.pbar-fill').forEach(b=>{b.style.width=b.dataset.w+'%'});
+    }
+  });
+},{threshold:0.3});
+document.querySelectorAll('.proj-row').forEach(el=>pObs.observe(el));
+setTimeout(()=>{document.querySelectorAll('.pbar-fill').forEach(b=>{b.style.width=b.dataset.w+'%'})},600);
+
+/* ── INIT ── */
+drawTopoMap();
+drawElev();
+window.addEventListener('resize',()=>{drawTopoMap();drawElev();});
+</script>
+</body>
+</html>
