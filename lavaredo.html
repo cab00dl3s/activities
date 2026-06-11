@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lavaredo 20K — Race Readiness Analysis</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --rock: #1a1612;
+    --stone: #2d2620;
+    --slate: #3d3530;
+    --dust: #6b5d54;
+    --sand: #b8a89a;
+    --snow: #f2ede8;
+    --accent: #e8673a;
+    --accent-dim: #c45228;
+    --green-go: #5a9e6f;
+    --amber: #d4a843;
+    --red: #c94040;
+    --mono: 'DM Mono', monospace;
+    --serif: 'Instrument Serif', serif;
+    --display: 'Bebas Neue', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--rock);
+    color: var(--snow);
+    font-family: var(--mono);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grain overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    opacity: 0.35;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 24px 80px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── HEADER ── */
+  header {
+    padding: 56px 0 40px;
+    border-bottom: 1px solid var(--slate);
+    margin-bottom: 48px;
+    position: relative;
+  }
+
+  .race-tag {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .race-tag::before {
+    content: '';
+    display: inline-block;
+    width: 20px;
+    height: 1px;
+    background: var(--accent);
+  }
+
+  h1 {
+    font-family: var(--display);
+    font-size: clamp(52px, 8vw, 96px);
+    line-height: 0.92;
+    letter-spacing: 0.02em;
+    color: var(--snow);
+    margin-bottom: 8px;
+  }
+
+  h1 span.accent { color: var(--accent); }
+
+  .header-sub {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--dust);
+    letter-spacing: 0.12em;
+    margin-top: 16px;
+  }
+
+  .countdown {
+    position: absolute;
+    top: 56px;
+    right: 0;
+    text-align: right;
+  }
+  .countdown-num {
+    font-family: var(--display);
+    font-size: 64px;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .countdown-label {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    color: var(--dust);
+    text-transform: uppercase;
+  }
+
+  /* ── VERDICT BANNER ── */
+  .verdict {
+    background: var(--stone);
+    border: 1px solid var(--slate);
+    border-left: 4px solid var(--amber);
+    padding: 28px 32px;
+    margin-bottom: 40px;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 24px;
+    align-items: center;
+  }
+
+  .verdict-icon {
+    font-size: 40px;
+    line-height: 1;
+  }
+
+  .verdict-title {
+    font-family: var(--display);
+    font-size: 28px;
+    color: var(--amber);
+    letter-spacing: 0.04em;
+    margin-bottom: 6px;
+  }
+
+  .verdict-text {
+    font-size: 13px;
+    color: var(--sand);
+    line-height: 1.7;
+  }
+
+  /* ── SECTION TITLES ── */
+  .section-label {
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--slate);
+  }
+
+  /* ── RACE SPECS ── */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1px;
+    background: var(--slate);
+    margin-bottom: 48px;
+  }
+
+  .stat-box {
+    background: var(--stone);
+    padding: 24px 20px;
+    position: relative;
+    overflow: hidden;
+    transition: background 0.2s;
+  }
+  .stat-box:hover { background: var(--slate); }
+
+  .stat-label {
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--dust);
+    margin-bottom: 8px;
+  }
+
+  .stat-value {
+    font-family: var(--display);
+    font-size: 36px;
+    color: var(--snow);
+    line-height: 1;
+  }
+
+  .stat-unit {
+    font-size: 11px;
+    color: var(--dust);
+    margin-top: 4px;
+  }
+
+  .stat-box.highlight .stat-value { color: var(--accent); }
+
+  /* ── PROJECTION TABLE ── */
+  .projection-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 48px;
+  }
+
+  @media (max-width: 640px) {
+    .projection-grid { grid-template-columns: 1fr; }
+    .countdown { display: none; }
+  }
+
+  .proj-card {
+    background: var(--stone);
+    border: 1px solid var(--slate);
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .proj-card.best { border-color: var(--green-go); }
+  .proj-card.mid  { border-color: var(--amber); }
+  .proj-card.con  { border-color: var(--dust); }
+
+  .proj-scenario {
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--dust);
+    margin-bottom: 12px;
+  }
+
+  .proj-source {
+    font-size: 11px;
+    color: var(--sand);
+    margin-bottom: 16px;
+    line-height: 1.5;
+    font-style: italic;
+    font-family: var(--serif);
+  }
+
+  .proj-time {
+    font-family: var(--display);
+    font-size: 48px;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .proj-card.best .proj-time { color: var(--green-go); }
+  .proj-card.mid  .proj-time { color: var(--amber); }
+  .proj-card.con  .proj-time { color: var(--dust); }
+
+  .proj-itra {
+    font-size: 10px;
+    color: var(--dust);
+    font-family: var(--mono);
+  }
+
+  .proj-bar {
+    margin-top: 16px;
+    height: 3px;
+    background: var(--slate);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .proj-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 1.2s cubic-bezier(0.16,1,0.3,1);
+  }
+  .proj-card.best .proj-bar-fill { background: var(--green-go); width: 0; }
+  .proj-card.mid  .proj-bar-fill { background: var(--amber); width: 0; }
+  .proj-card.con  .proj-bar-fill { background: var(--dust); width: 0; }
+
+  /* ── CHARTS ── */
+  .chart-wrap {
+    background: var(--stone);
+    border: 1px solid var(--slate);
+    padding: 28px;
+    margin-bottom: 24px;
+  }
+
+  .chart-title {
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--sand);
+    margin-bottom: 20px;
+  }
+
+  canvas { max-height: 280px; }
+
+  /* ── ELEVATION PROFILE ── */
+  .elevation-wrap {
+    background: var(--stone);
+    border: 1px solid var(--slate);
+    padding: 28px;
+    margin-bottom: 48px;
+    position: relative;
+  }
+
+  #elevProfile {
+    width: 100%;
+    height: 220px;
+    display: block;
+  }
+
+  .elev-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 8px;
+    font-size: 9px;
+    color: var(--dust);
+    letter-spacing: 0.1em;
+  }
+
+  /* ── TRAINING HISTORY TABLE ── */
+  .history-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 48px;
+    font-size: 12px;
+  }
+
+  .history-table thead tr {
+    border-bottom: 1px solid var(--slate);
+  }
+
+  .history-table th {
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--dust);
+    padding: 8px 12px;
+    text-align: left;
+    font-weight: 400;
+  }
+
+  .history-table td {
+    padding: 12px 12px;
+    color: var(--sand);
+    border-bottom: 1px solid rgba(61,53,48,0.5);
+    font-family: var(--mono);
+    font-size: 11px;
+  }
+
+  .history-table tr:hover td { background: rgba(61,53,48,0.4); }
+
+  .history-table td.highlight { color: var(--accent); font-weight: 500; }
+  .history-table td.good { color: var(--green-go); }
+  .history-table td.mid { color: var(--amber); }
+
+  /* ── RACE ANALYSIS ── */
+  .analysis-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 48px;
+  }
+
+  @media (max-width: 640px) {
+    .analysis-grid { grid-template-columns: 1fr; }
+  }
+
+  .analysis-card {
+    background: var(--stone);
+    border: 1px solid var(--slate);
+    padding: 24px;
+  }
+
+  .analysis-card h3 {
+    font-family: var(--display);
+    font-size: 18px;
+    letter-spacing: 0.05em;
+    margin-bottom: 16px;
+    color: var(--snow);
+  }
+
+  .analysis-card h3.strength { color: var(--green-go); }
+  .analysis-card h3.risk { color: var(--red); }
+
+  .analysis-item {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 12px;
+    font-size: 12px;
+    color: var(--sand);
+    line-height: 1.5;
+  }
+
+  .analysis-bullet {
+    color: var(--accent);
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    border-top: 1px solid var(--slate);
+    padding-top: 24px;
+    font-size: 10px;
+    color: var(--dust);
+    letter-spacing: 0.1em;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .fade-up {
+    opacity: 0;
+    animation: fadeUp 0.6s ease forwards;
+  }
+  .fade-up:nth-child(1) { animation-delay: 0.05s; }
+  .fade-up:nth-child(2) { animation-delay: 0.12s; }
+  .fade-up:nth-child(3) { animation-delay: 0.19s; }
+  .fade-up:nth-child(4) { animation-delay: 0.26s; }
+  .fade-up:nth-child(5) { animation-delay: 0.33s; }
+  .fade-up:nth-child(6) { animation-delay: 0.40s; }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- HEADER -->
+  <header>
+    <div class="race-tag">Race Readiness Report · Strava Analysis</div>
+    <h1>LAVAREDO<br><span class="accent">20K</span></h1>
+    <div class="header-sub">CORTINA D'AMPEZZO · DOLOMITES · 24 JUNE 2026 · 17:00</div>
+
+    <div class="countdown">
+      <div class="countdown-num" id="daysLeft">16</div>
+      <div class="countdown-label">Days to Race</div>
+    </div>
+  </header>
+
+  <!-- VERDICT -->
+  <div class="verdict fade-up">
+    <div class="verdict-icon">⚡</div>
+    <div>
+      <div class="verdict-title">YES — BORDERLINE 4 HOURS</div>
+      <div class="verdict-text">
+        Your Strava data projects a finish time of <strong>4h04m–4h18m</strong> using ITRA trail equivalence analysis. The sub-4h target is within reach but demands a disciplined pace strategy — especially on the 1,115m of climbing. Your aerobic base and mountain experience are solid; the gap is race-specific vertical training volume. Race day strategy will be the deciding factor.
+      </div>
+    </div>
+  </div>
+
+  <!-- RACE SPECS -->
+  <div class="section-label">Race Profile</div>
+  <div class="stats-grid">
+    <div class="stat-box highlight">
+      <div class="stat-label">Distance</div>
+      <div class="stat-value">20</div>
+      <div class="stat-unit">kilometres</div>
+    </div>
+    <div class="stat-box highlight">
+      <div class="stat-label">Elevation D+</div>
+      <div class="stat-value">1,115</div>
+      <div class="stat-unit">metres ascent</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">ITRA Flat Equiv</div>
+      <div class="stat-value">31.1</div>
+      <div class="stat-unit">km equivalent</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">Avg Gradient</div>
+      <div class="stat-value">5.6</div>
+      <div class="stat-unit">% overall (varies)</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">Aid Station</div>
+      <div class="stat-value">~15</div>
+      <div class="stat-unit">km at Malga Larieto</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">Start Altitude</div>
+      <div class="stat-value">1,224</div>
+      <div class="stat-unit">m (Cortina)</div>
+    </div>
+  </div>
+
+  <!-- ELEVATION PROFILE -->
+  <div class="section-label">Estimated Course Elevation Profile</div>
+  <div class="elevation-wrap fade-up">
+    <div class="chart-title">Lavaredo 20K — Elevation Profile (schematic)</div>
+    <canvas id="elevProfile"></canvas>
+    <div class="elev-labels">
+      <span>START · 1,224m</span>
+      <span>5km</span>
+      <span>10km</span>
+      <span>AID STN ~15km</span>
+      <span>FINISH · ~1,200m</span>
+    </div>
+  </div>
+
+  <!-- PROJECTIONS -->
+  <div class="section-label">Finish Time Projections</div>
+  <div class="projection-grid">
+    <div class="proj-card best fade-up">
+      <div class="proj-scenario">Best Case · Race Fitness</div>
+      <div class="proj-source">Based on May 23 trail run (12.6km / 387m D+) at ITRA pace 7:52/km</div>
+      <div class="proj-time">4:04</div>
+      <div class="proj-itra">ITRA equiv pace: 7:52/km</div>
+      <div class="proj-bar"><div class="proj-bar-fill" data-width="96"></div></div>
+    </div>
+    <div class="proj-card mid fade-up">
+      <div class="proj-scenario">Reference · Cannobio 2024</div>
+      <div class="proj-source">Cannobio trail race Jul 2024 (13km / 910m D+) at ITRA pace 8:17/km</div>
+      <div class="proj-time">4:18</div>
+      <div class="proj-itra">ITRA equiv pace: 8:17/km</div>
+      <div class="proj-bar"><div class="proj-bar-fill" data-width="78"></div></div>
+    </div>
+    <div class="proj-card con fade-up">
+      <div class="proj-scenario">Conservative · +10% Fatigue</div>
+      <div class="proj-source">May 23 pace + race-day fatigue margin for altitude &amp; 20km distance</div>
+      <div class="proj-time">4:29</div>
+      <div class="proj-itra">ITRA equiv pace: 8:39/km</div>
+      <div class="proj-bar"><div class="proj-bar-fill" data-width="60"></div></div>
+    </div>
+  </div>
+
+  <!-- MONTHLY RUNNING VOLUME CHART -->
+  <div class="section-label">Training Volume — Last 18 Months</div>
+  <div class="chart-wrap fade-up">
+    <div class="chart-title">Monthly Running Distance (km) + Elevation Gain (m)</div>
+    <canvas id="volumeChart"></canvas>
+  </div>
+
+  <!-- KEY REFERENCE ACTIVITIES TABLE -->
+  <div class="section-label">Key Reference Activities</div>
+  <table class="history-table fade-up">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Activity</th>
+        <th>Dist</th>
+        <th>D+</th>
+        <th>D+/km</th>
+        <th>Pace</th>
+        <th>ITRA Equiv</th>
+        <th>Race Proj</th>
+        <th>HR</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="highlight">23 May 2026</td>
+        <td>Trail Run (best recent)</td>
+        <td>12.6 km</td>
+        <td>387 m</td>
+        <td class="good">31 m/km</td>
+        <td>10:17/km</td>
+        <td>16.5 km</td>
+        <td class="good">4h04m</td>
+        <td>152</td>
+      </tr>
+      <tr>
+        <td>1 Jul 2024</td>
+        <td>Cannobio Trail Race</td>
+        <td>13.0 km</td>
+        <td>910 m</td>
+        <td class="good">70 m/km</td>
+        <td>14:06/km</td>
+        <td>22.1 km</td>
+        <td class="mid">4h18m</td>
+        <td>—</td>
+      </tr>
+      <tr>
+        <td>2 Jul 2025</td>
+        <td>Alpine Hike (mtn terrain)</td>
+        <td>19.9 km</td>
+        <td>1,102 m</td>
+        <td class="good">55 m/km</td>
+        <td>18:15/km</td>
+        <td>30.9 km</td>
+        <td>—</td>
+        <td>115</td>
+      </tr>
+      <tr>
+        <td>10 Jul 2025</td>
+        <td>Alpine Hike (biggest D+)</td>
+        <td>23.8 km</td>
+        <td>1,799 m</td>
+        <td class="highlight">76 m/km</td>
+        <td>19:26/km</td>
+        <td>41.8 km</td>
+        <td>—</td>
+        <td>110</td>
+      </tr>
+      <tr>
+        <td>5 Jun 2026</td>
+        <td>Long Trail Run (pre-taper)</td>
+        <td>19.3 km</td>
+        <td>37 m</td>
+        <td>2 m/km</td>
+        <td>7:07/km</td>
+        <td>19.7 km</td>
+        <td>—</td>
+        <td>150</td>
+      </tr>
+      <tr>
+        <td>22 Nov 2025</td>
+        <td>Via Ferrata Hike</td>
+        <td>6.3 km</td>
+        <td>601 m</td>
+        <td class="highlight">96 m/km</td>
+        <td>17:09/km</td>
+        <td>12.3 km</td>
+        <td>—</td>
+        <td>120</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- PACE BREAKDOWN CHART -->
+  <div class="section-label">ITRA Pace by Activity Type</div>
+  <div class="chart-wrap fade-up">
+    <div class="chart-title">Effective ITRA Pace (min/km) — Trail-Like Runs & Race Projections</div>
+    <canvas id="paceChart"></canvas>
+  </div>
+
+  <!-- STRENGTHS & RISKS -->
+  <div class="section-label">Race Assessment</div>
+  <div class="analysis-grid">
+    <div class="analysis-card fade-up">
+      <h3 class="strength">STRENGTHS</h3>
+      <div class="analysis-item">
+        <span class="analysis-bullet">▲</span>
+        <span><strong>Aerobic base is robust.</strong> 415 km run + 376 km hiked in the past 12 months. Consistent multi-sport load means your cardiovascular system handles long duration well.</span>
+      </div>
+      <div class="analysis-item">
+        <span class="analysis-bullet">▲</span>
+        <span><strong>Mountain legs from July 2025.</strong> 11 days of alpine hiking with up to 1,799m D+ per day. Your legs know what sustained steep ascent feels like.</span>
+      </div>
+      <div class="analysis-item">
+        <span class="analysis-bullet">▲</span>
+        <span><strong>Excellent flat run speed.</strong> Avg 6:27/km on flat 16km runs. You have headroom to lose pace on climbs and still bank time.</span>
+      </div>
+      <div class="analysis-item">
+        <span class="analysis-bullet">▲</span>
+        <span><strong>Controlled HR under load.</strong> Most long efforts clock HR 110–155 — aerobic zone, not redlining. Race-day cardiac ceiling is not the limiter.</span>
+      </div>
+      <div class="analysis-item">
+        <span class="analysis-bullet">▲</span>
+        <span><strong>Rock climbing proprioception.</strong> Technical terrain confidence translates directly to rocky Dolomite trails.</span>
+      </div>
+    </div>
+    <div class="analysis-card fade-up">
+      <h3 class="risk">RISKS &amp; WATCH POINTS</h3>
+      <div class="analysis-item">
+        <span class="analysis-bullet" style="color:var(--red)">▼</span>
+        <span><strong>Low run-specific vertical.</strong> Only 452m total D+ in May runs. Trail legs ≠ flat legs when you hit 1,115m of real climbing in race mode.</span>
+      </div>
+      <div class="analysis-item">
+        <span class="analysis-bullet" style="color:var(--red)">▼</span>
+        <span><strong>Longest trail run is 12.6 km.</strong> The race is 20 km. The final 7+ km at altitude will be uncharted fatigue territory — pace conservatively in the first half.</span>
+      </div>
+      <div class="analysis-item">
+        <span class="analysis-bullet" style="color:var(--red)">▼</span>
+        <span><strong>Altitude at Cortina (1,224m+).</strong> With peaks at ~2,000m, expect 5–8% reduced oxygen delivery. If not altitude-acclimatised, add buffer to your pace.</span>
+      </div>
+      <div class="analysis-item">
+        <span class="analysis-bullet" style="color:var(--red)">▼</span>
+        <span><strong>5pm start = evening racing.</strong> Temperature drop after sunset. Carry mandatory 500ml fluid but plan for cooling conditions on the descent.</span>
+      </div>
+      <div class="analysis-item">
+        <span class="analysis-bullet" style="color:var(--red)">▼</span>
+        <span><strong>No poles allowed.</strong> Pure leg strength on the descents. Quad conditioning is critical; the downhill after km 15 will test you.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- RACE STRATEGY -->
+  <div class="section-label">Race Day Strategy</div>
+  <div class="analysis-card fade-up" style="margin-bottom:48px;">
+    <h3>PACING BLUEPRINT FOR SUB-4H</h3>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px;margin-top:16px;">
+      <div>
+        <div style="font-size:9px;letter-spacing:.18em;color:var(--dust);margin-bottom:6px;">KM 0–5 · FLAT OPENER</div>
+        <div style="font-family:var(--display);font-size:28px;color:var(--green-go);">6:30/km</div>
+        <div style="font-size:11px;color:var(--sand);">Resist the race day surge. Let the field go. Bank energy for the climb.</div>
+      </div>
+      <div>
+        <div style="font-size:9px;letter-spacing:.18em;color:var(--dust);margin-bottom:6px;">KM 5–12 · MAIN CLIMB</div>
+        <div style="font-family:var(--display);font-size:28px;color:var(--amber);">11–14/km</div>
+        <div style="font-size:11px;color:var(--sand);">Power hike steep sections. Run the runnable. Heart rate cap at ~160.</div>
+      </div>
+      <div>
+        <div style="font-size:9px;letter-spacing:.18em;color:var(--dust);margin-bottom:6px;">KM 12–15 · RIDGE</div>
+        <div style="font-family:var(--display);font-size:28px;color:var(--amber);">9–11/km</div>
+        <div style="font-size:11px;color:var(--sand);">Aid station at 15km. Refuel. Don't stop — keep moving through.</div>
+      </div>
+      <div>
+        <div style="font-size:9px;letter-spacing:.18em;color:var(--dust);margin-bottom:6px;">KM 15–20 · DESCENT</div>
+        <div style="font-family:var(--display);font-size:28px;color:var(--accent);">6:00–7:30/km</div>
+        <div style="font-size:11px;color:var(--sand);">Let gravity work. Lean forward, short steps. This is where sub-4h is won or lost.</div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <span>Analysis based on 2,255 Strava activities (2013–2026)</span>
+    <span>Method: ITRA Trail Equivalence · D+/100 + Distance</span>
+    <span>Generated: June 8, 2026</span>
+  </footer>
+
+</div>
+
+<script>
+// ── COUNTDOWN ──
+const raceDate = new Date('2026-06-24');
+const today = new Date('2026-06-08');
+const diff = Math.round((raceDate - today) / 86400000);
+document.getElementById('daysLeft').textContent = diff;
+
+// ── ELEVATION PROFILE ──
+(function() {
+  const canvas = document.getElementById('elevProfile');
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth * window.devicePixelRatio;
+  canvas.height = 220 * window.devicePixelRatio;
+  ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+  const W = canvas.offsetWidth, H = 220;
+
+  // Schematic elevation data for Lavaredo 20K
+  const elevPoints = [
+    {x:0,   e:1224}, {x:1,  e:1230}, {x:2,  e:1260}, {x:3,  e:1310},
+    {x:4,   e:1380}, {x:5,  e:1450}, {x:6,  e:1560}, {x:7,  e:1680},
+    {x:8,   e:1790}, {x:9,  e:1880}, {x:10, e:1950}, {x:11, e:2020},
+    {x:12,  e:2080}, {x:13, e:2100}, {x:14, e:2060}, {x:15, e:1980},
+    {x:16,  e:1840}, {x:17, e:1680}, {x:18, e:1520}, {x:19, e:1360},
+    {x:20,  e:1224}
+  ];
+
+  const minE = 1000, maxE = 2200;
+  const pad = {left:8, right:8, top:12, bottom:8};
+
+  function toCanvas(x, e) {
+    const cx = pad.left + (x / 20) * (W - pad.left - pad.right);
+    const cy = pad.top + ((maxE - e) / (maxE - minE)) * (H - pad.top - pad.bottom);
+    return [cx, cy];
+  }
+
+  // Fill gradient
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, 'rgba(232,103,58,0.35)');
+  grad.addColorStop(1, 'rgba(232,103,58,0.03)');
+
+  ctx.beginPath();
+  let [cx0, cy0] = toCanvas(0, elevPoints[0].e);
+  ctx.moveTo(cx0, H - pad.bottom);
+  ctx.lineTo(cx0, cy0);
+
+  for (let i = 1; i < elevPoints.length; i++) {
+    const [cx, cy] = toCanvas(elevPoints[i].x, elevPoints[i].e);
+    const [px, py] = toCanvas(elevPoints[i-1].x, elevPoints[i-1].e);
+    const cpx = (px + cx) / 2;
+    ctx.bezierCurveTo(cpx, py, cpx, cy, cx, cy);
+  }
+
+  const [lastX, lastY] = toCanvas(20, elevPoints[elevPoints.length-1].e);
+  ctx.lineTo(lastX, H - pad.bottom);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Line
+  ctx.beginPath();
+  [cx0, cy0] = toCanvas(0, elevPoints[0].e);
+  ctx.moveTo(cx0, cy0);
+  for (let i = 1; i < elevPoints.length; i++) {
+    const [cx, cy] = toCanvas(elevPoints[i].x, elevPoints[i].e);
+    const [px, py] = toCanvas(elevPoints[i-1].x, elevPoints[i-1].e);
+    const cpx = (px + cx) / 2;
+    ctx.bezierCurveTo(cpx, py, cpx, cy, cx, cy);
+  }
+  ctx.strokeStyle = '#e8673a';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Aid station marker at km 15
+  const [ax, ay] = toCanvas(15, 1980);
+  ctx.beginPath();
+  ctx.arc(ax, ay, 5, 0, Math.PI * 2);
+  ctx.fillStyle = '#d4a843';
+  ctx.fill();
+
+  ctx.font = `9px 'DM Mono', monospace`;
+  ctx.fillStyle = '#d4a843';
+  ctx.fillText('AID', ax - 12, ay - 10);
+
+  // Altitude gridlines
+  [1400, 1600, 1800, 2000].forEach(e => {
+    const [, gy] = toCanvas(0, e);
+    ctx.beginPath();
+    ctx.moveTo(pad.left, gy);
+    ctx.lineTo(W - pad.right, gy);
+    ctx.strokeStyle = 'rgba(61,53,48,0.6)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.font = `9px 'DM Mono', monospace`;
+    ctx.fillStyle = 'rgba(107,93,84,0.8)';
+    ctx.fillText(e + 'm', pad.left + 2, gy - 3);
+  });
+})();
+
+// ── VOLUME CHART ──
+const volCtx = document.getElementById('volumeChart').getContext('2d');
+const volLabels = ['Jan 25','Feb 25','Mar 25','Apr 25','May 25','Jun 25','Jul 25','Aug 25','Sep 25','Oct 25','Nov 25','Dec 25','Jan 26','Feb 26','Mar 26','Apr 26','May 26','Jun 26'];
+const volKm =    [23.1, 38.2, 18.4, 18.2, 29.7, 25.6, 16.9, 24.6, 41.2, 25.9, 27.5, 32.7, 51.7, 21.8, 14.2, 45.0, 60.8, 28.0];
+const volElev =  [652, 49, 18, 11, 55, 2416, 9770, 103, 103, 48, 1248, 73, 74, 17, 14, 569, 646, 54];
+
+new Chart(volCtx, {
+  type: 'bar',
+  data: {
+    labels: volLabels,
+    datasets: [
+      {
+        label: 'Run km',
+        data: volKm,
+        backgroundColor: (ctx) => {
+          const idx = ctx.dataIndex;
+          return idx >= 12 ? 'rgba(232,103,58,0.8)' : 'rgba(232,103,58,0.35)';
+        },
+        yAxisID: 'y',
+        borderRadius: 2,
+        order: 2
+      },
+      {
+        label: 'D+ total (run+hike)',
+        data: volElev,
+        type: 'line',
+        borderColor: '#d4a843',
+        backgroundColor: 'rgba(212,168,67,0.08)',
+        borderWidth: 2,
+        pointRadius: 3,
+        pointBackgroundColor: '#d4a843',
+        tension: 0.3,
+        yAxisID: 'y1',
+        order: 1,
+        fill: true
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: {
+        labels: {
+          color: '#b8a89a',
+          font: { family: "'DM Mono', monospace", size: 10 },
+          boxWidth: 12
+        }
+      },
+      tooltip: {
+        backgroundColor: '#2d2620',
+        borderColor: '#3d3530',
+        borderWidth: 1,
+        titleColor: '#f2ede8',
+        bodyColor: '#b8a89a',
+        titleFont: { family: "'DM Mono', monospace", size: 11 },
+        bodyFont: { family: "'DM Mono', monospace", size: 10 },
+        callbacks: {
+          label: (ctx) => {
+            if (ctx.dataset.label === 'Run km') return ` Run: ${ctx.raw.toFixed(1)} km`;
+            return ` D+: ${ctx.raw} m`;
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        grid: { color: 'rgba(61,53,48,0.5)' },
+        ticks: { color: '#6b5d54', font: { family: "'DM Mono', monospace", size: 9 } }
+      },
+      y: {
+        grid: { color: 'rgba(61,53,48,0.5)' },
+        ticks: { color: '#6b5d54', font: { family: "'DM Mono', monospace", size: 9 }, callback: v => v + ' km' },
+        title: { display: true, text: 'Run Distance (km)', color: '#6b5d54', font: { size: 9 } }
+      },
+      y1: {
+        position: 'right',
+        grid: { display: false },
+        ticks: { color: '#d4a843', font: { family: "'DM Mono', monospace", size: 9 }, callback: v => v + 'm' },
+        title: { display: true, text: 'Elevation D+ (m)', color: '#d4a843', font: { size: 9 } }
+      }
+    }
+  }
+});
+
+// ── PACE COMPARISON CHART ──
+const paceCtx = document.getElementById('paceChart').getContext('2d');
+
+// Convert min/km to decimal for sorting
+const paceData = [
+  { label: 'Flat run\nbest 16km', val: 6 + 27/60, color: '#5a9e6f' },
+  { label: 'May 23\ntrail run', val: 7 + 52/60, color: '#e8673a' },
+  { label: 'Cannobio\n2024 race', val: 8 + 17/60, color: '#d4a843' },
+  { label: 'Conservative\n+10%', val: 8 + 39/60, color: '#6b5d54' },
+  { label: '4h goal\npace', val: (4*60) / 31.1, color: '#c94040' },
+];
+
+const formatPace = v => {
+  const mins = Math.floor(v);
+  const secs = Math.round((v - mins) * 60);
+  return `${mins}:${secs.toString().padStart(2,'0')}`;
+};
+
+new Chart(paceCtx, {
+  type: 'bar',
+  data: {
+    labels: paceData.map(d => d.label),
+    datasets: [{
+      data: paceData.map(d => d.val),
+      backgroundColor: paceData.map(d => d.color + 'cc'),
+      borderColor: paceData.map(d => d.color),
+      borderWidth: 1,
+      borderRadius: 3,
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#2d2620',
+        borderColor: '#3d3530',
+        borderWidth: 1,
+        titleColor: '#f2ede8',
+        bodyColor: '#b8a89a',
+        callbacks: {
+          label: (ctx) => ` ITRA Pace: ${formatPace(ctx.raw)} /km`
+        }
+      }
+    },
+    scales: {
+      x: {
+        min: 5,
+        max: 10,
+        grid: { color: 'rgba(61,53,48,0.5)' },
+        ticks: {
+          color: '#6b5d54',
+          font: { family: "'DM Mono', monospace", size: 9 },
+          callback: v => formatPace(v) + '/km'
+        }
+      },
+      y: {
+        grid: { color: 'rgba(61,53,48,0.5)' },
+        ticks: { color: '#b8a89a', font: { family: "'DM Mono', monospace", size: 9 } }
+      }
+    }
+  }
+});
+
+// ── ANIMATE PROJECTION BARS ON SCROLL ──
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.querySelectorAll('.proj-bar-fill').forEach(bar => {
+        bar.style.width = bar.dataset.width + '%';
+      });
+    }
+  });
+}, { threshold: 0.3 });
+
+document.querySelectorAll('.projection-grid').forEach(el => observer.observe(el));
+
+// Trigger if already visible
+setTimeout(() => {
+  document.querySelectorAll('.proj-bar-fill').forEach(bar => {
+    bar.style.width = bar.dataset.width + '%';
+  });
+}, 500);
+</script>
+</body>
+</html>
