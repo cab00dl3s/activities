@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cycling Performance — Year Over Year</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0b0c0f;
+    --surface: #13151a;
+    --border: #1e2128;
+    --accent: #e8ff47;
+    --accent2: #ff6b35;
+    --accent3: #3af0c4;
+    --text: #e8e9ec;
+    --muted: #5a5f6e;
+    --font-display: 'Bebas Neue', sans-serif;
+    --font-body: 'DM Mono', monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* GRID BACKGROUND */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(232,255,71,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(232,255,71,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+
+  /* HEADER */
+  .header {
+    margin-bottom: 56px;
+    position: relative;
+  }
+  .header-eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.25em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    opacity: 0;
+    animation: fadeUp 0.6s 0.1s forwards;
+  }
+  .header h1 {
+    font-family: var(--font-display);
+    font-size: clamp(56px, 9vw, 96px);
+    line-height: 0.9;
+    letter-spacing: 0.02em;
+    color: var(--text);
+    opacity: 0;
+    animation: fadeUp 0.6s 0.2s forwards;
+  }
+  .header h1 span {
+    color: var(--accent);
+    display: block;
+  }
+  .header-rule {
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(90deg, var(--accent) 0%, transparent 60%);
+    margin-top: 24px;
+    opacity: 0;
+    animation: fadeUp 0.6s 0.35s forwards;
+  }
+
+  /* STAT CARDS */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    margin-bottom: 40px;
+    opacity: 0;
+    animation: fadeUp 0.7s 0.4s forwards;
+  }
+  .stat-card {
+    background: var(--surface);
+    padding: 24px 20px;
+    position: relative;
+    overflow: hidden;
+    cursor: default;
+    transition: background 0.2s;
+  }
+  .stat-card:hover { background: #181b22; }
+  .stat-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--accent);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.3s ease;
+  }
+  .stat-card:hover::after { transform: scaleX(1); }
+  .stat-label {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .stat-value {
+    font-family: var(--font-display);
+    font-size: 38px;
+    line-height: 1;
+    color: var(--text);
+  }
+  .stat-unit {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 4px;
+    font-style: italic;
+  }
+  .stat-card.highlight .stat-value { color: var(--accent); }
+  .stat-card.highlight2 .stat-value { color: var(--accent3); }
+
+  /* SECTION */
+  .section {
+    margin-bottom: 40px;
+    opacity: 0;
+    animation: fadeUp 0.7s forwards;
+  }
+  .section:nth-child(4) { animation-delay: 0.5s; }
+  .section:nth-child(5) { animation-delay: 0.6s; }
+  .section:nth-child(6) { animation-delay: 0.7s; }
+  .section:nth-child(7) { animation-delay: 0.8s; }
+
+  .section-header {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .section-title {
+    font-family: var(--font-display);
+    font-size: 28px;
+    letter-spacing: 0.05em;
+    color: var(--text);
+  }
+  .section-tag {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    padding: 3px 8px;
+  }
+
+  .chart-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 24px;
+    position: relative;
+  }
+  .chart-wrap canvas { display: block; }
+
+  /* YOY TABLE */
+  .yoy-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  .yoy-table th {
+    text-align: left;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .yoy-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    transition: background 0.15s;
+  }
+  .yoy-table tr:hover td { background: rgba(232,255,71,0.03); }
+  .yoy-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .yoy-table .year-col {
+    font-family: var(--font-display);
+    font-size: 22px;
+    color: var(--accent);
+    letter-spacing: 0.05em;
+  }
+  .bar-inline {
+    display: inline-block;
+    height: 6px;
+    background: var(--accent);
+    opacity: 0.5;
+    vertical-align: middle;
+    margin-left: 8px;
+    border-radius: 1px;
+  }
+  .best-year td { background: rgba(232,255,71,0.04) !important; }
+  .best-year .year-col { color: var(--accent2); }
+
+  /* TOP RIDES */
+  .ride-list { display: flex; flex-direction: column; gap: 1px; background: var(--border); border: 1px solid var(--border); }
+  .ride-item {
+    background: var(--surface);
+    display: grid;
+    grid-template-columns: 90px 1fr auto;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 20px;
+    transition: background 0.2s;
+    cursor: default;
+  }
+  .ride-item:hover { background: #181b22; }
+  .ride-date { font-size: 11px; color: var(--muted); }
+  .ride-name { font-size: 12px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ride-meta { display: flex; gap: 20px; align-items: center; flex-shrink: 0; }
+  .ride-badge {
+    font-family: var(--font-display);
+    font-size: 20px;
+    white-space: nowrap;
+  }
+  .ride-badge.km { color: var(--accent); }
+  .ride-badge.spd { color: var(--accent3); }
+  .ride-badge.elev { color: var(--accent2); }
+
+  /* INSIGHTS */
+  .insights {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+  }
+  @media (max-width: 600px) { .insights { grid-template-columns: 1fr; } }
+  .insight-card {
+    background: var(--surface);
+    padding: 24px;
+  }
+  .insight-icon { font-size: 24px; margin-bottom: 10px; }
+  .insight-title {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .insight-text { font-size: 12px; line-height: 1.7; color: var(--text); }
+  .insight-text strong { color: var(--accent); font-weight: 500; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* SPEED PILL */
+  .speed-pill {
+    display: inline-block;
+    background: rgba(232,255,71,0.1);
+    border: 1px solid rgba(232,255,71,0.25);
+    color: var(--accent);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-eyebrow">🚴 Strava Performance Report</div>
+    <h1>Cycling<span>Year Over Year</span></h1>
+    <div class="header-rule"></div>
+  </div>
+
+  <!-- LIFETIME STATS -->
+  <div class="stats-grid">
+    <div class="stat-card highlight">
+      <div class="stat-label">Total Distance</div>
+      <div class="stat-value">16,453</div>
+      <div class="stat-unit">kilometres ridden</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total Time</div>
+      <div class="stat-value">736</div>
+      <div class="stat-unit">hours in the saddle</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total Rides</div>
+      <div class="stat-value">433</div>
+      <div class="stat-unit">real-world rides</div>
+    </div>
+    <div class="stat-card highlight2">
+      <div class="stat-label">Total Elevation</div>
+      <div class="stat-value">82,439</div>
+      <div class="stat-unit">metres climbed</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Peak Season</div>
+      <div class="stat-value">2023</div>
+      <div class="stat-unit">most km + most climbing</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Longest Ride</div>
+      <div class="stat-value">224</div>
+      <div class="stat-unit">km — Jul 2022</div>
+    </div>
+  </div>
+
+  <!-- ANNUAL VOLUME CHART -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">Annual Volume</div>
+      <div class="section-tag">km + hours</div>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="annualChart" height="90"></canvas>
+    </div>
+  </div>
+
+  <!-- MONTHLY HEATMAP-STYLE CHART -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">Monthly Rhythm</div>
+      <div class="section-tag">km by month, 2021–2026</div>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="monthlyChart" height="130"></canvas>
+    </div>
+  </div>
+
+  <!-- ELEVATION TREND -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">Climbing Ambition</div>
+      <div class="section-tag">total elevation gain per year</div>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="elevChart" height="70"></canvas>
+    </div>
+  </div>
+
+  <!-- YOY TABLE -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">Season Breakdown</div>
+      <div class="section-tag">all metrics</div>
+    </div>
+    <div class="chart-wrap" style="padding:0; overflow:hidden;">
+      <table class="yoy-table">
+        <thead>
+          <tr>
+            <th>Year</th>
+            <th class="num">Rides</th>
+            <th class="num">Distance</th>
+            <th class="num">Hours</th>
+            <th class="num">Avg Speed</th>
+            <th class="num">Elevation</th>
+            <th class="num">Longest</th>
+          </tr>
+        </thead>
+        <tbody id="yoyBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TOP RIDES -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">Epic Rides</div>
+      <div class="section-tag">top 8 by distance</div>
+    </div>
+    <div class="ride-list" id="rideList"></div>
+  </div>
+
+  <!-- INSIGHTS -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">Endurance Insights</div>
+      <div class="section-tag">analysis</div>
+    </div>
+    <div class="insights">
+      <div class="insight-card">
+        <div class="insight-icon">📈</div>
+        <div class="insight-title">Peak Years: 2021–2023</div>
+        <div class="insight-text">Your cycling prime was a clear <strong>3-year block</strong> — 107, 112, and 104 rides per year with <strong>4,600–4,850 km</strong> annually. You were fully committed to the sport at that level.</div>
+      </div>
+      <div class="insight-card">
+        <div class="insight-icon">⛰️</div>
+        <div class="insight-title">Climbing Peaked in 2023</div>
+        <div class="insight-text">Despite similar km to 2021, you climbed <strong>34,748m in 2023</strong> — nearly double 2021's 18,203m. That Leiden → Rome bikepacking tour was a serious elevation event.</div>
+      </div>
+      <div class="insight-card">
+        <div class="insight-icon">📉</div>
+        <div class="insight-title">Volume Drop: 2024–2025</div>
+        <div class="insight-text">Volume fell sharply to <strong>1,394 km (2024)</strong> and <strong>787 km (2025)</strong> — likely as trail running and climbing took over your endurance focus. A deliberate shift, not a decline.</div>
+      </div>
+      <div class="insight-card">
+        <div class="insight-icon">🔥</div>
+        <div class="insight-title">2026: Back on the Bike?</div>
+        <div class="insight-text">Already <strong>623 km by June 2026</strong> — ahead of 2025's full-year pace. Your April 135 km ride signals you might be rekindling the cycling side before summer.</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const yoyData = [
+  {year:2021, rides:107, total_km:4683.4, total_hours:205.1, avg_speed:23.4, total_elev:18203, longest_km:200.3},
+  {year:2022, rides:112, total_km:3965.3, total_hours:170.4, avg_speed:22.5, total_elev:20348, longest_km:224.3},
+  {year:2023, rides:104, total_km:4849.1, total_hours:230.6, avg_speed:21.2, total_elev:34748, longest_km:135.6},
+  {year:2024, rides:50,  total_km:1393.6, total_hours:61.5,  avg_speed:20.8, total_elev:4167,  longest_km:122.8},
+  {year:2025, rides:38,  total_km:786.8,  total_hours:35.8,  avg_speed:20.8, total_elev:2160,  longest_km:100.2},
+  {year:2026, rides:14,  total_km:622.6,  total_hours:26.2,  avg_speed:22.9, total_elev:2510,  longest_km:135.0},
+];
+
+const monthlyRaw = [
+  {year:2021,month:3,km:149.9},{year:2021,month:4,km:800.3},{year:2021,month:5,km:802.2},{year:2021,month:6,km:800.5},
+  {year:2021,month:7,km:652.6},{year:2021,month:8,km:439.1},{year:2021,month:9,km:419.2},{year:2021,month:10,km:329.1},
+  {year:2021,month:11,km:159.2},{year:2021,month:12,km:131.3},
+  {year:2022,month:1,km:55.8},{year:2022,month:2,km:102.3},{year:2022,month:3,km:181.1},{year:2022,month:4,km:293.5},
+  {year:2022,month:5,km:375.5},{year:2022,month:6,km:580.0},{year:2022,month:7,km:715.9},{year:2022,month:8,km:916.8},
+  {year:2022,month:9,km:316.2},{year:2022,month:10,km:149.0},{year:2022,month:11,km:132.8},{year:2022,month:12,km:146.4},
+  {year:2023,month:1,km:28.7},{year:2023,month:2,km:191.3},{year:2023,month:3,km:157.4},{year:2023,month:4,km:474.8},
+  {year:2023,month:5,km:81.4},{year:2023,month:6,km:2076.7},{year:2023,month:7,km:313.8},{year:2023,month:8,km:338.8},
+  {year:2023,month:9,km:986.4},{year:2023,month:10,km:127.4},{year:2023,month:12,km:72.5},
+  {year:2024,month:3,km:115.2},{year:2024,month:4,km:93.8},{year:2024,month:5,km:147.5},{year:2024,month:7,km:381.5},
+  {year:2024,month:8,km:144.0},{year:2024,month:9,km:284.2},{year:2024,month:10,km:22.2},{year:2024,month:11,km:187.8},
+  {year:2025,month:2,km:11.4},{year:2025,month:3,km:109.0},{year:2025,month:4,km:139.4},{year:2025,month:6,km:256.1},
+  {year:2025,month:7,km:44.2},{year:2025,month:8,km:125.1},{year:2025,month:9,km:74.3},{year:2025,month:12,km:27.3},
+  {year:2026,month:2,km:33.6},{year:2026,month:3,km:79.7},{year:2026,month:4,km:404.5},{year:2026,month:5,km:104.8},
+];
+
+const topRides = [
+  {date:'2022-07-10', name:"Let's see where my Canyon and these petite legs go…", km:224.3, h:9.1, spd:24.6, elev:355},
+  {date:'2021-10-23', name:'Saturday epic ride 🚴🏻‍♀️', km:200.3, h:8.8, spd:22.8, elev:115},
+  {date:'2021-06-26', name:'🌧 My first century!! (100 miles) 💃🏻', km:164.7, h:7.4, spd:22.2, elev:369},
+  {date:'2022-08-14', name:'Nijmegen to Leiden 🥵☀️', km:151.7, h:5.4, spd:28.3, elev:53},
+  {date:'2026-04-19', name:'Ride back home 🏠', km:135.0, h:5.1, spd:26.7, elev:590},
+  {date:'2023-06-10', name:'Leiden 🇳🇱 to Rome 🇮🇹: Day 1', km:135.6, h:6.5, spd:20.8, elev:249},
+  {date:'2022-06-12', name:'Gran Fondo + veloviewer block day', km:133.3, h:4.7, spd:28.2, elev:661},
+  {date:'2023-06-14', name:'Leiden 🇳🇱 to Rome 🇮🇹: Day 5', km:129.6, h:6.5, spd:20.0, elev:859},
+];
+
+const accent = '#e8ff47';
+const accent2 = '#ff6b35';
+const accent3 = '#3af0c4';
+const muted = '#5a5f6e';
+const surface = '#13151a';
+const border = '#1e2128';
+
+Chart.defaults.color = muted;
+Chart.defaults.font.family = "'DM Mono', monospace";
+Chart.defaults.font.size = 11;
+
+// --- ANNUAL CHART (bar + line combo) ---
+const annualCtx = document.getElementById('annualChart').getContext('2d');
+new Chart(annualCtx, {
+  type: 'bar',
+  data: {
+    labels: yoyData.map(d => d.year),
+    datasets: [
+      {
+        label: 'Distance (km)',
+        data: yoyData.map(d => d.total_km),
+        backgroundColor: yoyData.map(d => d.year === 2023 ? 'rgba(232,255,71,0.55)' : 'rgba(232,255,71,0.18)'),
+        borderColor: yoyData.map(d => d.year === 2023 ? accent : 'rgba(232,255,71,0.4)'),
+        borderWidth: 1,
+        yAxisID: 'y',
+        order: 2,
+      },
+      {
+        label: 'Hours',
+        data: yoyData.map(d => d.total_hours),
+        type: 'line',
+        borderColor: accent3,
+        backgroundColor: 'transparent',
+        pointBackgroundColor: accent3,
+        pointRadius: 4,
+        tension: 0.3,
+        yAxisID: 'y1',
+        order: 1,
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { display: true, labels: { color: muted, boxWidth: 10, padding: 16 } },
+      tooltip: { backgroundColor: '#181b22', borderColor: border, borderWidth: 1, padding: 12 }
+    },
+    scales: {
+      x: { grid: { color: border }, ticks: { color: muted } },
+      y: {
+        grid: { color: border },
+        ticks: { color: accent, callback: v => v >= 1000 ? (v/1000).toFixed(0)+'k' : v },
+        title: { display: true, text: 'km', color: accent }
+      },
+      y1: {
+        position: 'right',
+        grid: { drawOnChartArea: false },
+        ticks: { color: accent3, callback: v => v+'h' },
+        title: { display: true, text: 'hours', color: accent3 }
+      }
+    }
+  }
+});
+
+// --- MONTHLY CHART ---
+const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const years = [2021,2022,2023,2024,2025,2026];
+const colors = ['rgba(232,255,71,0.7)','rgba(58,240,196,0.7)','rgba(255,107,53,0.8)','rgba(150,120,255,0.7)','rgba(255,200,50,0.7)','rgba(200,200,200,0.7)'];
+
+const monthlyDatasets = years.map((yr, i) => {
+  const vals = Array(12).fill(0);
+  monthlyRaw.filter(d => d.year === yr).forEach(d => { vals[d.month-1] = d.km; });
+  return {
+    label: String(yr),
+    data: vals,
+    backgroundColor: colors[i],
+    borderColor: 'transparent',
+    borderWidth: 0,
+    borderRadius: 2,
+  };
+});
+
+const monthlyCtx = document.getElementById('monthlyChart').getContext('2d');
+new Chart(monthlyCtx, {
+  type: 'bar',
+  data: { labels: months, datasets: monthlyDatasets },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { display: true, labels: { color: muted, boxWidth: 10, padding: 12 } },
+      tooltip: {
+        backgroundColor: '#181b22', borderColor: border, borderWidth: 1, padding: 12,
+        callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(0)} km` }
+      }
+    },
+    scales: {
+      x: { grid: { color: border }, ticks: { color: muted }, stacked: false },
+      y: {
+        grid: { color: border },
+        ticks: { color: muted, callback: v => v >= 1000 ? (v/1000).toFixed(1)+'k' : v },
+      }
+    }
+  }
+});
+
+// --- ELEVATION CHART ---
+const elevCtx = document.getElementById('elevChart').getContext('2d');
+new Chart(elevCtx, {
+  type: 'bar',
+  data: {
+    labels: yoyData.map(d => d.year),
+    datasets: [{
+      label: 'Elevation Gain (m)',
+      data: yoyData.map(d => d.total_elev),
+      backgroundColor: yoyData.map(d => d.year === 2023 ? 'rgba(255,107,53,0.7)' : 'rgba(255,107,53,0.25)'),
+      borderColor: yoyData.map(d => d.year === 2023 ? accent2 : 'rgba(255,107,53,0.5)'),
+      borderWidth: 1,
+      borderRadius: 2,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#181b22', borderColor: border, borderWidth: 1,
+        callbacks: { label: ctx => ` ${(ctx.parsed.y).toLocaleString()} m` }
+      }
+    },
+    scales: {
+      x: { grid: { color: border }, ticks: { color: muted } },
+      y: {
+        grid: { color: border },
+        ticks: { color: accent2, callback: v => (v/1000).toFixed(0)+'k m' }
+      }
+    }
+  }
+});
+
+// --- YOY TABLE ---
+const maxKm = Math.max(...yoyData.map(d => d.total_km));
+const tbody = document.getElementById('yoyBody');
+yoyData.forEach(d => {
+  const isBest = d.year === 2023;
+  const barW = Math.round((d.total_km / maxKm) * 80);
+  const tr = document.createElement('tr');
+  if (isBest) tr.className = 'best-year';
+  tr.innerHTML = `
+    <td class="year-col">${d.year}${isBest ? '<span class="speed-pill">peak</span>' : ''}</td>
+    <td class="num">${d.rides}</td>
+    <td class="num">${d.total_km.toLocaleString(undefined,{maximumFractionDigits:0})} km<span class="bar-inline" style="width:${barW}px"></span></td>
+    <td class="num">${d.total_hours.toFixed(0)} h</td>
+    <td class="num">${d.avg_speed.toFixed(1)} km/h</td>
+    <td class="num">${d.total_elev.toLocaleString(undefined,{maximumFractionDigits:0})} m</td>
+    <td class="num">${d.longest_km.toFixed(0)} km</td>
+  `;
+  tbody.appendChild(tr);
+});
+
+// --- TOP RIDES ---
+const rideList = document.getElementById('rideList');
+topRides.forEach(r => {
+  const div = document.createElement('div');
+  div.className = 'ride-item';
+  div.innerHTML = `
+    <div class="ride-date">${r.date}</div>
+    <div class="ride-name">${r.name}</div>
+    <div class="ride-meta">
+      <div class="ride-badge km">${r.km.toFixed(0)} km</div>
+      <div class="ride-badge spd">${r.spd.toFixed(1)} km/h</div>
+      <div class="ride-badge elev">${r.elev}m ↑</div>
+    </div>
+  `;
+  rideList.appendChild(div);
+});
+</script>
+</body>
+</html>
